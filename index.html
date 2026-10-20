@@ -7,23 +7,27 @@
     <style>
         body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
         .card { border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 5px; }
-        input, text-area, button { display: block; width: 100%; margin-bottom: 10px; padding: 8px; }
+        label { display: block; margin-bottom: 4px; font-weight: bold; }
+        input, textarea, button { display: block; width: 100%; margin-bottom: 10px; padding: 8px; box-sizing: border-box; }
+        button { cursor: pointer; }
     </style>
 </head>
 <body>
     <h2>Add New Record</h2>
     <form id="dataForm">
-        <input type="text" id="title" placeholder="Record Title" required>
-        <input type="text" id="content" placeholder="Record Content" required>
+        <label for="title">Record Title</label>
+        <input type="text" id="title" name="title" placeholder="Record Title" required>
+        <label for="content">Record Content</label>
+        <input type="text" id="content" name="content" placeholder="Record Content" required>
         <button type="submit">Submit to Database</button>
     </form>
 
     <h2>Database Records</h2>
-    <div id="recordsContainer">Loading...</div>
+    <div id="recordsContainer" aria-live="polite">Loading...</div>
 
     <script>
-        // IMPORTANT: Replace this URL with your specific Vercel deployment URL
-        const VERCEL_API_URL = 'https://student-api-backend-cj5n4motr-ryan-joseph-canano.vercel.app/api';
+        // Vercel deployment that serves this page
+        const VERCEL_API_URL = 'https://student-api-backend-ten.vercel.app/api';
 
         // Function to fetch and display records
         async function loadRecords() {
@@ -45,17 +49,36 @@
                 }
 
                 const records = await response.json();
+
+                if (!Array.isArray(records)) {
+                    container.innerText = 'Error loading records: the API returned an unexpected response.';
+                    return;
+                }
+
                 container.innerHTML = '';
 
                 if(records.length === 0) {
-                    container.innerHTML = '<p>No records found.</p>';
+                    const empty = document.createElement('p');
+                    empty.textContent = 'No records found.';
+                    container.appendChild(empty);
                     return;
                 }
 
                 records.forEach(record => {
                     const div = document.createElement('div');
                     div.className = 'card';
-                    div.innerHTML = `<strong>${record.title}</strong><br>${record.content}`;
+
+                    // Build the card with textContent so record content is never
+                    // parsed as HTML (records are user submitted).
+                    const title = document.createElement('strong');
+                    title.textContent = record.title ?? '';
+
+                    const lineBreak = document.createElement('br');
+
+                    const content = document.createElement('span');
+                    content.textContent = record.content ?? '';
+
+                    div.append(title, lineBreak, content);
                     container.appendChild(div);
                 });
             } catch (error) {
