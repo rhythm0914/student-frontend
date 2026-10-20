@@ -27,11 +27,24 @@
 
         // Function to fetch and display records
         async function loadRecords() {
+            const container = document.getElementById('recordsContainer');
             try {
                 const response = await fetch(VERCEL_API_URL);
-                const records = await response.json();
 
-                const container = document.getElementById('recordsContainer');
+                // A protected deployment answers with a redirect to the Vercel login
+                // page instead of JSON, so report the status before parsing.
+                if (!response.ok) {
+                    container.innerText = `Error loading records: API returned ${response.status} ${response.statusText}.`;
+                    return;
+                }
+
+                const contentType = response.headers.get('content-type') || '';
+                if (!contentType.includes('application/json')) {
+                    container.innerText = 'Error loading records: API did not return JSON (it may be redirecting to a login page).';
+                    return;
+                }
+
+                const records = await response.json();
                 container.innerHTML = '';
 
                 if(records.length === 0) {
@@ -46,7 +59,7 @@
                     container.appendChild(div);
                 });
             } catch (error) {
-                document.getElementById('recordsContainer').innerText = 'Error loading records.';
+                container.innerText = `Error loading records: ${error.message}`;
             }
         }
 
@@ -58,17 +71,22 @@
             const content = document.getElementById('content').value;
 
             try {
-                await fetch(VERCEL_API_URL, {
+                const response = await fetch(VERCEL_API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ title, content })
                 });
 
+                if (!response.ok) {
+                    alert(`Failed to submit record: API returned ${response.status} ${response.statusText}.`);
+                    return;
+                }
+
                 // Clear form and reload records
                 document.getElementById('dataForm').reset();
                 loadRecords();
             } catch (error) {
-                alert('Failed to submit record.');
+                alert(`Failed to submit record: ${error.message}`);
             }
         });
 
