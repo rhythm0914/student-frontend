@@ -1,120 +1,845 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Database Project</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
-        .card { border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 5px; }
-        label { display: block; margin-bottom: 4px; font-weight: bold; }
-        input, textarea, button { display: block; width: 100%; margin-bottom: 10px; padding: 8px; box-sizing: border-box; }
-        button { cursor: pointer; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student Records</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet"> <!-- taste-skill-ignore: the framed-sheet style gives the mono face exactly one job, the record reference and the ledger's date column -->
+<style>
+/* ------------------------------------------------------------------
+   Student Records — framed sheet (tinted desk, white sheet, one rule)
+   Tokens: framed-sheet style. Face: the frame is tinted from the
+   ledger's world (blue-grey stock), the one hue marks the product and
+   the ledger's current line, IBM Plex Mono carries refs and dates.
+   Grid arithmetic: sheet 1200 - 2 x 24 canvas padding = 1152 canvas
+   1152 - 2 x 24 = 1104 content = 4 x 264 + 3 x 16  (four columns)
+   ------------------------------------------------------------------ */
+:root {
+  --frame: #f1f4f7;          /* the desk: a low-chroma blue-grey ledger stock */
+  --surface: #ffffff;        /* the sheet */
+  --raised: #f4f6f8;
+  --active: #ebedee;
+  --border: #e8eaec;
+  --rule: #f0f1f2;
+  --control: #cdced1;
+  --text: #131416;
+  --muted: #5d5f60;
+  --faint: #6b6b6b;
+  --accent: #1b6c80;         /* one hue: the mark, and the day that is today */
+  --negative: #c4242a;
+  --skeleton: #e7ebee;
+
+  --radius-sheet: 16px;
+  --radius-card: 8px;
+  --radius-control: 6px;
+
+  --gap: 24px;
+  --pad: 24px;
+  --control-height: 36px;
+  --row-pitch: 68px;
+
+  --fs-title: 24px;
+  --fs-section: 16px;
+  --fs-body: 14px;
+  --fs-small: 12px;
+
+  --font: "IBM Plex Sans", Inter, system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace; /* taste-skill-ignore: the framed-sheet style gives the mono face one job — the record reference and the ledger's date column */
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--frame);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.num { font-variant-numeric: tabular-nums; }
+
+/* ---- the frame and the sheet ------------------------------------- */
+.frame {
+  padding: 8px;
+  min-height: 100svh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.sheet {
+  width: 100%;
+  max-width: 1200px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sheet);
+}
+
+.canvas {
+  max-width: 1152px;
+  margin: 0 auto;
+  padding: 40px var(--pad) 32px;
+}
+
+/* ---- title row --------------------------------------------------- */
+.title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gap);
+}
+
+.title-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mark {
+  color: var(--accent);
+  flex: none;
+}
+
+h1 {
+  margin: 0;
+  font-size: var(--fs-title);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.lede {
+  margin: 8px 0 0 34px;
+  color: var(--muted);
+  font-size: var(--fs-body);
+}
+
+.freshness {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  padding-top: 2px;
+}
+
+.freshness-time {
+  color: var(--muted);
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background-color .12s ease, color .12s ease;
+}
+
+.icon-btn:hover { background: var(--raised); color: var(--text); }
+.icon-btn:active { background: var(--active); }
+.icon-btn svg { display: block; }
+.icon-btn.is-busy svg { animation: spin .9s linear infinite; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- the work area: the ledger, and the composer beside it ------- */
+/* A three column list does not span the canvas. 760 + 24 + 320 = 1104 */
+.work {
+  display: grid;
+  grid-template-columns: minmax(0, 760px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  margin-top: 32px;
+}
+
+.work > section { margin-top: 0; }
+
+/* ---- sections ---------------------------------------------------- */
+.section-title {
+  margin: 0 0 14px;
+  font-size: var(--fs-section);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+/* ---- composer ---------------------------------------------------- */
+.composer-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.field label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.field input {
+  width: 100%;
+  height: var(--control-height);
+  padding: 0 12px;
+  border: 1px solid var(--control);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-body);
+  transition: border-color .12s ease;
+}
+
+.field input::placeholder { color: var(--faint); }
+.field input:hover { border-color: #b9bcbe; }
+.field input:focus { outline: none; border-color: var(--accent); }
+
+.btn-primary {
+  height: var(--control-height);
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: var(--text);
+  color: #fff;
+  font: inherit;
+  font-size: var(--fs-body);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color .12s ease;
+}
+
+.btn-primary:hover { background: #2b2d30; }
+.btn-primary:active { background: #000; }
+.btn-primary[disabled] { background: var(--control); color: #fff; cursor: default; }
+
+.form-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-small);
+  min-height: 18px;
+}
+
+.form-note.is-error { color: var(--negative); }
+
+/* ---- records list ------------------------------------------------ */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.search svg {
+  position: absolute;
+  left: 11px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.search input {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px 0 32px;
+  border: 1px solid var(--control);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  transition: border-color .12s ease;
+}
+
+.search input::placeholder { color: var(--faint); }
+.search input:focus { outline: none; border-color: var(--accent); }
+
+.count {
+  flex: none;
+  color: var(--muted);
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* the ledger: rules and alignment, no card, no zebra, no header band */
+.ledger {
+  margin-top: 14px;
+  border-top: 1px solid var(--rule);
+}
+
+.ledger-head,
+.ledger-row {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr) 132px;
+  gap: 16px;
+  align-items: baseline;
+}
+
+.ledger-head {
+  padding: 12px 0 10px;
+  color: var(--muted);
+  font-size: var(--fs-small);
+}
+
+.records .section-title { margin-bottom: 24px; }
+
+.ledger-head span:last-child { text-align: right; }
+
+.ledger-row {
+  min-height: var(--row-pitch);
+  padding: 15px 0;
+  border-top: 1px solid var(--rule);
+}
+
+/* no rule under the header: the rows carry the rules */
+.ledger-head + .ledger-row { border-top: 0; }
+/* the last row sits on the sheet's foot margin instead of keeping a full pitch */
+.ledger-row:last-child { padding-bottom: 0; min-height: 0; }
+
+.cell-ref {
+  font-family: var(--mono); /* taste-skill-ignore: the style's sanctioned second face, used for the record reference only */
+  font-size: var(--fs-small);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell-title {
+  min-width: 0;
+  font-size: var(--fs-body);
+  line-height: 1.35;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell-content {
+  margin-top: 3px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell-when {
+  text-align: right;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* the one hue: the ledger's current line, the entry just filed */
+.cell-when.is-current { color: var(--accent); font-weight: 500; }
+
+/* ---- skeleton loaders -------------------------------------------- */
+/* Flat bars at the real size of what they replace. No shimmer. */
+.skeleton {
+  min-height: var(--row-pitch);
+  padding: 15px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.ledger-head + .skeleton { border-top: 0; }
+.skeleton:last-child { padding-bottom: 0; min-height: 0; }
+
+.skeleton-inner {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr) 132px;
+  gap: 16px;
+  align-items: center;
+}
+
+.bar {
+  border-radius: 3px;
+  background: var(--skeleton);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+.bar-ref { width: 62px; height: 12px; }
+.bar-title { width: 190px; height: 14px; }
+.bar-content { width: 320px; height: 13px; margin-top: 9px; }
+.bar-when { width: 78px; height: 13px; justify-self: end; }
+.bar-count { width: 46px; height: 12px; }
+
+@keyframes pulse {
+  0%, 100% { opacity: .55; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar { animation: none; opacity: .8; }
+  .icon-btn.is-busy svg { animation: none; }
+  * { transition-duration: .01ms !important; }
+}
+
+/* ---- empty and error states -------------------------------------- */
+.state {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px dashed var(--control);
+  border-radius: var(--radius-card);
+  color: var(--muted);
+  font-size: var(--fs-body);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.state.is-error { border-style: solid; border-color: var(--border); }
+.state strong { color: var(--text); font-weight: 500; }
+
+.text-btn {
+  flex: none;
+  border: 0;
+  background: none;
+  padding: 4px 2px;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.text-btn:hover { text-decoration: underline; }
+
+/* ---- focus ------------------------------------------------------- */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- the tablet and the phone ------------------------------------ */
+@media (max-width: 1099px) {
+  .work { grid-template-columns: minmax(0, 1fr); }
+  .work > .composer { order: -1; }
+}
+
+@media (min-width: 761px) and (max-width: 1099px) {
+  .composer-form { grid-template-columns: 1fr 1.5fr auto; align-items: end; }
+}
+
+@media (max-width: 760px) {
+  .frame { padding: 0; display: block; }
+  .sheet {
+    max-width: none;
+    min-height: 100svh;
+    border: 0;
+    border-radius: 0;
+  }
+  .canvas { padding: 24px 16px 40px; }
+  .lede { margin-left: 0; }
+  .title-row { flex-wrap: wrap; gap: 12px; }
+  .freshness { padding-top: 0; }
+  .composer-form { grid-template-columns: 1fr; gap: 14px; }
+  .btn-primary { width: 100%; height: 44px; }
+  .field input { height: 44px; }
+  .toolbar { width: 100%; }
+  .search input { height: 40px; }
+  .ledger-head { display: none; }
+  .ledger-row,
+  .skeleton-inner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 12px;
+  }
+  .cell-ref { grid-column: 1; grid-row: 2; }
+  .cell-title { grid-column: 1; grid-row: 1; }
+  .cell-when { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+  .bar-ref { display: none; }
+  .bar-when { grid-column: 2; grid-row: 1 / span 2; }
+  .state { flex-direction: column; align-items: flex-start; gap: 8px; }
+}
+</style>
 </head>
 <body>
-    <h2>Add New Record</h2>
-    <form id="dataForm">
-        <label for="title">Record Title</label>
-        <input type="text" id="title" name="title" placeholder="Record Title" required>
-        <label for="content">Record Content</label>
-        <input type="text" id="content" name="content" placeholder="Record Content" required>
-        <button type="submit">Submit to Database</button>
-    </form>
+<div class="frame">
+  <main class="sheet">
+    <div class="canvas">
 
-    <h2>Database Records</h2>
-    <div id="recordsContainer" aria-live="polite">Loading...</div>
+      <header class="title-row">
+        <div class="title-main">
+          <svg class="mark" viewBox="0 0 20 22" width="20" height="22" aria-hidden="true" focusable="false">
+            <rect x="1" y="1" width="18" height="20" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+            <line x1="1" y1="7" x2="19" y2="7" stroke="currentColor" stroke-width="1.5"/>
+            <line x1="5" y1="12" x2="15" y2="12" stroke="currentColor" stroke-width="1.5"/>
+            <line x1="5" y1="16" x2="12" y2="16" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          <h1>Student Records</h1>
+        </div>
+        <div class="freshness">
+          <span class="freshness-time" id="freshness">Loading</span>
+          <button type="button" class="icon-btn" id="refresh" aria-label="Reload records">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" focusable="false">
+              <path d="M13.5 8a5.5 5.5 0 1 1-1.9-4.16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M13.9 1.9v3.1h-3.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+      <p class="lede">Everything in the student database, newest first.</p>
 
-    <script>
-        // Vercel deployment that serves this page
-        const VERCEL_API_URL = 'https://student-api-backend-ten.vercel.app/api';
+      <div class="work">
+        <section class="records" aria-labelledby="records-heading">
+          <h2 class="section-title" id="records-heading">All records</h2>
+          <div class="toolbar">
+            <div class="search">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true" focusable="false">
+                <circle cx="6" cy="6" r="4.25" stroke="currentColor" stroke-width="1.4"/>
+                <line x1="9.2" y1="9.2" x2="12.5" y2="12.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+              </svg>
+              <input type="search" id="search" placeholder="Search records" aria-label="Search records" autocomplete="off">
+            </div>
+            <span class="count" id="count" aria-live="polite"></span>
+          </div>
+          <div class="ledger" id="ledger" aria-live="polite" aria-busy="true"></div>
+        </section>
 
-        // Function to fetch and display records
-        async function loadRecords() {
-            const container = document.getElementById('recordsContainer');
-            try {
-                const response = await fetch(VERCEL_API_URL);
+        <section class="composer" aria-labelledby="composer-heading">
+          <h2 class="section-title" id="composer-heading">New record</h2>
+          <form class="composer-form" id="recordForm" novalidate>
+            <div class="field">
+              <label for="title">Title</label>
+              <input type="text" id="title" name="title" placeholder="Record title" autocomplete="off" required>
+            </div>
+            <div class="field">
+              <label for="content">Content</label>
+              <input type="text" id="content" name="content" placeholder="Record content" autocomplete="off" required>
+            </div>
+            <div class="field">
+              <button type="submit" class="btn-primary" id="submit">Save record</button>
+            </div>
+          </form>
+          <p class="form-note" id="formNote" role="status">MongoDB Atlas · student-api-backend</p>
+        </section>
+      </div>
 
-                // A protected deployment answers with a redirect to the Vercel login
-                // page instead of JSON, so report the status before parsing.
-                if (!response.ok) {
-                    container.innerText = `Error loading records: API returned ${response.status} ${response.statusText}.`;
-                    return;
-                }
+    </div>
+  </main>
+</div>
 
-                const contentType = response.headers.get('content-type') || '';
-                if (!contentType.includes('application/json')) {
-                    container.innerText = 'Error loading records: API did not return JSON (it may be redirecting to a login page).';
-                    return;
-                }
+<script>
+(() => {
+  'use strict';
 
-                const records = await response.json();
+  const API_URL = 'https://student-api-backend-ten.vercel.app/api';
+  const SOURCE_NOTE = 'MongoDB Atlas · student-api-backend';
 
-                if (!Array.isArray(records)) {
-                    container.innerText = 'Error loading records: the API returned an unexpected response.';
-                    return;
-                }
+  const ledger = document.getElementById('ledger');
+  const countEl = document.getElementById('count');
+  const freshnessEl = document.getElementById('freshness');
+  const refreshBtn = document.getElementById('refresh');
+  const form = document.getElementById('recordForm');
+  const submitBtn = document.getElementById('submit');
+  const formNote = document.getElementById('formNote');
+  const searchInput = document.getElementById('search');
+  const titleInput = document.getElementById('title');
+  const contentInput = document.getElementById('content');
 
-                container.innerHTML = '';
+  let records = [];
+  let query = '';
+  let loaded = false;
+  let noteTimer;
 
-                if(records.length === 0) {
-                    const empty = document.createElement('p');
-                    empty.textContent = 'No records found.';
-                    container.appendChild(empty);
-                    return;
-                }
+  // The line under the composer carries the data's source at rest, and any
+  // save or failure message in the same slot, so nothing on the page moves.
+  function setNote(text, isError) {
+    clearTimeout(noteTimer);
+    formNote.textContent = text;
+    formNote.classList.toggle('is-error', Boolean(isError));
+    if (text !== SOURCE_NOTE) {
+      noteTimer = setTimeout(() => {
+        formNote.textContent = SOURCE_NOTE;
+        formNote.classList.remove('is-error');
+      }, 4000);
+    }
+  }
 
-                records.forEach(record => {
-                    const div = document.createElement('div');
-                    div.className = 'card';
+  /* ---- formatting ------------------------------------------------ */
 
-                    // Build the card with textContent so record content is never
-                    // parsed as HTML (records are user submitted).
-                    const title = document.createElement('strong');
-                    title.textContent = record.title ?? '';
+  function formatRef(id) {
+    const raw = String(id || '');
+    return raw.length > 8 ? raw.slice(0, 8) + '…' : raw;
+  }
 
-                    const lineBreak = document.createElement('br');
+  function formatWhen(iso) {
+    const date = new Date(iso);
+    if (isNaN(date)) return '—';
 
-                    const content = document.createElement('span');
-                    content.textContent = record.content ?? '';
+    const now = new Date();
+    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const stamp = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const days = Math.round((day - stamp) / 86400000);
 
-                    div.append(title, lineBreak, content);
-                    container.appendChild(div);
-                });
-            } catch (error) {
-                container.innerText = `Error loading records: ${error.message}`;
-            }
-        }
+    const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
-        // Function to handle form submission
-        document.getElementById('dataForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+    if (days === 0) return { text: 'Today ' + time };
+    if (days === 1) return { text: 'Yesterday ' + time };
 
-            const title = document.getElementById('title').value;
-            const content = document.getElementById('content').value;
+    const datePart = date.toLocaleDateString([], { day: 'numeric', month: 'short' });
+    return { text: datePart + ', ' + time };
+  }
 
-            try {
-                const response = await fetch(VERCEL_API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title, content })
-                });
+  // The ledger's current line: the most recently filed record.
+  function currentId() {
+    let id = null;
+    let latest = -Infinity;
+    for (const record of records) {
+      const time = new Date(record.createdAt).getTime();
+      if (!isNaN(time) && time > latest) {
+        latest = time;
+        id = record._id;
+      }
+    }
+    return id;
+  }
 
-                if (!response.ok) {
-                    alert(`Failed to submit record: API returned ${response.status} ${response.statusText}.`);
-                    return;
-                }
+  /* ---- rendering -------------------------------------------------- */
 
-                // Clear form and reload records
-                document.getElementById('dataForm').reset();
-                loadRecords();
-            } catch (error) {
-                alert(`Failed to submit record: ${error.message}`);
-            }
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  function renderSkeletons() {
+    const head = el('div', 'ledger-head');
+    head.append(el('span', null, 'Ref'), el('span', null, 'Record'), el('span', null, 'Added'));
+    ledger.replaceChildren(head);
+
+    for (let i = 0; i < 6; i++) {
+      const row = el('div', 'skeleton');
+      row.setAttribute('aria-hidden', 'true');
+      const inner = el('div', 'skeleton-inner');
+
+      const lead = el('div');
+      lead.append(el('div', 'bar bar-ref'));
+      const stack = el('div');
+      stack.append(el('div', 'bar bar-title'), el('div', 'bar bar-content'));
+      const when = el('div');
+      when.append(el('div', 'bar bar-when'));
+
+      inner.append(lead, stack, when);
+      row.append(inner);
+      ledger.append(row);
+    }
+  }
+
+  function visibleRecords() {
+    const q = query.trim().toLowerCase();
+    if (!q) return records;
+    return records.filter((r) =>
+      String(r.title || '').toLowerCase().includes(q) ||
+      String(r.content || '').toLowerCase().includes(q)
+    );
+  }
+
+  function renderCount(shown, total) {
+    countEl.replaceChildren();
+    if (!loaded) {
+      countEl.append(el('div', 'bar bar-count'));
+      return;
+    }
+    const noun = total === 1 ? 'record' : 'records';
+    countEl.textContent = shown === total
+      ? total + ' ' + noun
+      : shown + ' of ' + total + ' ' + noun;
+  }
+
+  function renderList() {
+    const rows = visibleRecords();
+    renderCount(rows.length, records.length);
+
+    const head = el('div', 'ledger-head');
+    head.append(el('span', null, 'Ref'), el('span', null, 'Record'), el('span', null, 'Added'));
+    ledger.replaceChildren(head);
+
+    if (rows.length === 0) {
+      const state = el('div', 'state');
+      if (records.length === 0) {
+        state.append(el('span', null, 'No records yet. Save one above and it appears here.'));
+      } else {
+        state.append(el('span', null, 'No records match “' + query.trim() + '”.'));
+        const clear = el('button', 'text-btn', 'Clear search');
+        clear.type = 'button';
+        clear.addEventListener('click', () => {
+          query = '';
+          searchInput.value = '';
+          renderList();
         });
+        state.append(clear);
+      }
+      ledger.append(state);
+      return;
+    }
 
-        // Initial load
-        loadRecords();
-    </script>
+    const current = currentId();
+
+    for (const record of rows) {
+      const when = formatWhen(record.createdAt);
+
+      const row = el('div', 'ledger-row');
+
+      const ref = el('div', 'cell-ref', formatRef(record._id));
+      ref.title = String(record._id || '');
+
+      const title = el('div', 'cell-title');
+      title.append(el('div', null, record.title || ''), el('div', 'cell-content', record.content || ''));
+
+      const whenCell = el('div', 'cell-when' + (record._id === current ? ' is-current' : ''), when.text);
+
+      row.append(ref, title, whenCell);
+      ledger.append(row);
+    }
+  }
+
+  function renderError(message) {
+    ledger.replaceChildren();
+    const state = el('div', 'state is-error');
+    const text = el('span');
+    text.append(el('strong', null, 'Couldn’t load records. '), document.createTextNode(message));
+    const retry = el('button', 'text-btn', 'Retry');
+    retry.type = 'button';
+    retry.addEventListener('click', () => load());
+    state.append(text, retry);
+    ledger.append(state);
+    countEl.replaceChildren();
+  }
+
+  /* ---- data -------------------------------------------------------- */
+
+  function setFreshness() {
+    const now = new Date();
+    const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    freshnessEl.textContent = 'Updated ' + time;
+  }
+
+  async function load() {
+    refreshBtn.classList.add('is-busy');
+    refreshBtn.disabled = true;
+    ledger.setAttribute('aria-busy', 'true');
+    if (!loaded) renderSkeletons();
+
+    try {
+      const response = await fetch(API_URL);
+
+      if (!response.ok) {
+        throw new Error('The API returned ' + response.status + ' ' + response.statusText + '.');
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        throw new Error('The API did not return JSON — it may be redirecting to a login page.');
+      }
+
+      const data = await response.json();
+      if (!Array.isArray(data)) {
+        throw new Error('The API returned an unexpected response.');
+      }
+
+      records = data;
+      loaded = true;
+      setFreshness();
+      renderList();
+    } catch (error) {
+      setNote(SOURCE_NOTE, false);
+      renderError(error.message);
+    } finally {
+      ledger.setAttribute('aria-busy', 'false');
+      refreshBtn.classList.remove('is-busy');
+      refreshBtn.disabled = false;
+    }
+  }
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const title = titleInput.value.trim();
+    const content = contentInput.value.trim();
+
+    if (!title || !content) {
+      setNote('A record needs both a title and its content.', true);
+      (title ? contentInput : titleInput).focus();
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving…';
+
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content })
+      });
+
+      if (!response.ok) {
+        const detail = await response.json().catch(() => null);
+        throw new Error(detail && detail.error
+          ? detail.error
+          : 'The API returned ' + response.status + ' ' + response.statusText + '.');
+      }
+
+      form.reset();
+      setNote('Saved “' + title + '”.', false);
+      await load();
+    } catch (error) {
+      setNote('Couldn’t save the record: ' + error.message, true);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Save record';
+    }
+  });
+
+  refreshBtn.addEventListener('click', () => load());
+
+  let searchTimer;
+  searchInput.addEventListener('input', (event) => {
+    query = event.target.value;
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(renderList, 80);
+  });
+
+  renderCount(0, 0);
+  load();
+})();
+</script>
 </body>
 </html>
